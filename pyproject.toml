@@ -30,6 +30,7 @@ dependencies = [
     "requests>=2.31.0",
     "semantic-version",
     "texttable",
+    "pyinstaller"
 ]
 dynamic = ["version", "readme"]
 
