@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: | 
+          pip install -e .
+          python tools/build_standalone.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aqt_${{ matrix.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: aqt_windows-latest
+          path: windows/
+      - uses: actions/download-artifact@v4
+        with:
+          name: aqt_ubuntu-20.04
+          path: ubuntu/
+      - uses: actions/download-artifact@v4
+        with:
+          name: aqt_macos-latest
+          path: macos/
+
+      - name: Move files
+        run: |
+          mv windows/aqt.exe aqt-win.exe
+          mv ubuntu/aqt aqt-linux
+          mv macos/aqt aqt-macos
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: 3.2.0
+          body: See https://github.com/miurahr/aqtinstall/releases/ for patchnotes
+          files: |
+            aqt-win.exe
+            aqt-linux
+            aqt-macos
